@@ -1,0 +1,70 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.6 Chrome/144.0.7559.236 Electron/40.8.4 Safari/537.36" version="29.6.6">
+  <diagram name="Page-1" id="OEGfYRq4Ng8qQA2e1KWO">
+    <mxGraphModel dx="2605" dy="1565" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="aYawBRkTkJilWXz14I1b-3" edge="1" parent="1" source="aYawBRkTkJilWXz14I1b-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="aYawBRkTkJilWXz14I1b-2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Job Search" vertex="1">
+          <mxGeometry height="60" width="120" x="300" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-5" edge="1" parent="1" source="aYawBRkTkJilWXz14I1b-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="aYawBRkTkJilWXz14I1b-4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-2" parent="1" style="whiteSpace=wrap;html=1;rounded=1;" value="Generate Motivational Letter" vertex="1">
+          <mxGeometry height="60" width="120" x="500" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-7" edge="1" parent="1" source="aYawBRkTkJilWXz14I1b-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="aYawBRkTkJilWXz14I1b-6" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-4" parent="1" style="whiteSpace=wrap;html=1;rounded=1;" value="Draft Email" vertex="1">
+          <mxGeometry height="60" width="120" x="700" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-9" edge="1" parent="1" source="aYawBRkTkJilWXz14I1b-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="aYawBRkTkJilWXz14I1b-8" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-6" parent="1" style="whiteSpace=wrap;html=1;rounded=1;" value="Review Email &amp;amp; Motivational Letter" vertex="1">
+          <mxGeometry height="60" width="120" x="900" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-11" edge="1" parent="1" source="aYawBRkTkJilWXz14I1b-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="aYawBRkTkJilWXz14I1b-10" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-8" parent="1" style="whiteSpace=wrap;html=1;rounded=1;" value="Send email attached with CV &amp;amp; ML" vertex="1">
+          <mxGeometry height="60" width="120" x="1100" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-10" parent="1" style="whiteSpace=wrap;html=1;rounded=1;" value="View List of vacancies sent" vertex="1">
+          <mxGeometry height="60" width="120" x="1300" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-12" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;Need a Proffesion Automation&lt;/h1&gt;&lt;p&gt;- Search for jobs on Indeed, LinkedIn, Magnet.me or Claude in the netherlands or close to where I live, related to what related to what your CV have.&lt;/p&gt;&lt;p&gt;- Upload my CV&lt;/p&gt;&lt;p&gt;- Upload Motivational Letters to use as templates&lt;/p&gt;&lt;p&gt;- Generate unique motivational letter based on the jobs found&lt;/p&gt;&lt;p&gt;- Review the motivational Letters&lt;/p&gt;&lt;p&gt;- Send emails via google mail attached with CV and ML&lt;/p&gt;&lt;p&gt;- Have a list view of a table that shows the following&lt;/p&gt;&lt;p&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;- Jobs applied to(view of a number)&lt;br&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;- Emails sent date&lt;br&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;- Interview date&lt;br&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;- Rejected date&lt;br&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;- No answer&lt;br&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;- Cannot contact&lt;br&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="400" width="830" x="100" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-13" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Add Links" vertex="1">
+          <mxGeometry height="30" width="60" x="250" y="810" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-14" edge="1" parent="1" source="aYawBRkTkJilWXz14I1b-13" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.301;entryY=1.068;entryDx=0;entryDy=0;entryPerimeter=0;" target="aYawBRkTkJilWXz14I1b-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-15" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" value="- Choose langusge(Dutch, English)&lt;div&gt;- Max 1 A4 Paper&lt;/div&gt;&lt;div&gt;- Sound Human&lt;/div&gt;&lt;div&gt;- Option to add some detailes:&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;- Graduate student&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;- Minor in .....&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;- A reference&lt;br&gt;&lt;/div&gt;&lt;div&gt;- Save ML as [Name]space[companyname]space[Motivational letter]&lt;/div&gt;" vertex="1">
+          <mxGeometry height="170" width="270" x="410" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-16" edge="1" parent="1" source="aYawBRkTkJilWXz14I1b-15" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.348;entryY=0.949;entryDx=0;entryDy=0;entryPerimeter=0;" target="aYawBRkTkJilWXz14I1b-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-17" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" value="- A viewer and editer&lt;div&gt;- A list that you can see of what was geberated, what you need to edit and what was edited&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="120" x="850" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-18" edge="1" parent="1" source="aYawBRkTkJilWXz14I1b-17" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.595;entryY=1.009;entryDx=0;entryDy=0;entryPerimeter=0;" target="aYawBRkTkJilWXz14I1b-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-19" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" value="- Multi email send option&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="120" x="1100" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="aYawBRkTkJilWXz14I1b-20" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" value="- Motivational Letter of vacancy is saved and can be viewed, downloaded&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="190" x="1300" y="780" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

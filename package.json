@@ -1,0 +1,7 @@
+{
+  "name": "nap-workspace",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ]
+}
