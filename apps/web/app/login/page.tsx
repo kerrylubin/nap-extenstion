@@ -54,8 +54,8 @@ export default function LoginPage() {
         <h1 className="text-2xl font-extrabold bg-gradient-to-r from-brand-900 via-brand-700 to-brand-300 bg-clip-text text-transparent text-center mb-1">NAPAI</h1>
         <p className="text-xs text-brand-500 font-semibold text-center mb-8">Job Application Hub</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-4" suppressHydrationWarning>
+          <div suppressHydrationWarning>
             <label className="block text-xs text-gray-500 mb-1">Email</label>
             <input
               type="email"
@@ -67,7 +67,7 @@ export default function LoginPage() {
               placeholder="you@example.com"
             />
           </div>
-          <div>
+          <div suppressHydrationWarning>
             <label className="block text-xs text-gray-500 mb-1">Password</label>
             <input
               type="password"

@@ -351,6 +351,13 @@ export function JobSearchPanel({ applications = [], onLike, onUnlike }: Props) {
                           {job.language === "en" ? "🇬🇧 EN" : "🇳🇱 NL"}
                         </span>
                       )}
+                      {savedApp && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          savedApp.emailBody || savedApp.letterBase64 ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-gray-100 text-gray-700 border border-gray-200'
+                        }`}>
+                          {savedApp.emailBody || savedApp.letterBase64 ? "Prepared ✅" : "Saved 💾"} on {new Date(savedApp.createdAt).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-gray-700 mt-1 font-medium">
                       <span className="text-gray-900 font-bold">{job.company}</span> · <span className="text-gray-700 font-semibold">{job.location}</span>

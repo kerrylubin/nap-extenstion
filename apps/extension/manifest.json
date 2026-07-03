@@ -8,6 +8,7 @@
   },
   "background": {
     "service_worker": "src/background/index.ts",
+    "scripts": ["src/background/index.ts"],
     "type": "module"
   },
   "content_scripts": [
@@ -19,7 +20,8 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "downloads"
   ],
   "host_permissions": [
     "http://localhost:3000/*",

@@ -5,7 +5,7 @@ import { updateApplication, getCVForLanguage, downloadCVBuffer, getProfile } fro
 
 export async function POST(req: NextRequest) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(req);
     const body = await req.json();
     const {
       applicationId,

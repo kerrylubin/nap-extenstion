@@ -649,7 +649,7 @@ export function ApplicationTable({
                               disabled={reapplyingId === app.id}
                               className="text-xs bg-brand-300 hover:bg-brand-500 text-brand-900 px-3 py-1.5 rounded-lg font-bold disabled:opacity-50 flex items-center gap-1.5 shadow-sm transition-all hover:scale-[1.02] transform whitespace-nowrap cursor-pointer"
                             >
-                              {reapplyingId === app.id ? <><Spinner /> Applying...</> : <><span>✨</span> Apply with AI</>}
+                              {reapplyingId === app.id ? <><Spinner /> Preparing...</> : <><span>✨</span> Prepare Application</>}
                             </button>
                           ) : (
                             <>

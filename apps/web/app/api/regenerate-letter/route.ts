@@ -9,7 +9,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 export async function POST(req: NextRequest) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(req);
     const { jobTitle, company, contactName, jobDescription, language, prompt, currentLetter, applicationId, hobbies } = await req.json();
 
     const profile = await getProfile(supabase, user.id);
