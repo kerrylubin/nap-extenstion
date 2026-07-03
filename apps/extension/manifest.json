@@ -3,6 +3,11 @@
   "name": "NAPAI Companion",
   "version": "1.0.0",
   "description": "Autofill job applications with your NAPAI profile, CV, and motivational letters.",
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
   "action": {
     "default_popup": "index.html"
   },
