@@ -2,6 +2,7 @@
 import { Fragment, useState, useRef, useEffect } from "react";
 import { JobApplication, ApplicationStatus } from "@/types";
 import { StatusBadge } from "./StatusBadge";
+import { Sparkles, Trash2, Eye, Search, CheckCircle2, Loader2, Send } from "lucide-react";
 
 const STATUS_OPTIONS: { value: ApplicationStatus; label: string }[] = [
   { value: "pending", label: "Pending" },
@@ -25,7 +26,7 @@ const STATUS_FILTERS: { value: ApplicationStatus | "all" | "liked_with_contact";
   { value: "contact", label: "Contact" },
 ];
 
-type SortKey = "none" | "matchScore" | "sentDate";
+type SortKey = "none" | "matchScore" | "updatedAt";
 
 interface BulkError {
   jobTitle: string;
@@ -54,6 +55,7 @@ interface Props {
   onBulkReapply: (ids: string[]) => void;
   onBulkSend: (ids: string[]) => void;
   onBulkReview: (ids: string[]) => void;
+  onBulkDelete: (ids: string[]) => void;
   bulkProgress: BulkProgress | null;
   onDismissBulkProgress: () => void;
   testMode: boolean;
@@ -303,6 +305,7 @@ export function ApplicationTable({
   onBulkReapply,
   onBulkSend,
   onBulkReview,
+  onBulkDelete,
   bulkProgress,
   onDismissBulkProgress,
   testMode,
@@ -313,6 +316,28 @@ export function ApplicationTable({
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all" | "liked_with_contact">("all");
   const [sortKey, setSortKey] = useState<SortKey>("none");
   const [sortAsc, setSortAsc] = useState(false);
+  const [onlineStatus, setOnlineStatus] = useState<Record<string, boolean | "checking">>({});
+  
+  const checkOnline = async (id: string, url: string) => {
+    setOnlineStatus(prev => ({ ...prev, [id]: "checking" }));
+    try {
+      const res = await fetch("/api/check-online", {
+        method: "POST",
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      setOnlineStatus(prev => ({ ...prev, [id]: data.isOnline }));
+    } catch {
+      setOnlineStatus(prev => ({ ...prev, [id]: true }));
+    }
+  };
+
+  const checkOnlineBulk = async (ids: string[]) => {
+    const targets = sorted.filter(a => ids.includes(a.id) && a.jobUrl);
+    for (const app of targets) {
+      await checkOnline(app.id, app.jobUrl!);
+    }
+  };
 
   // Filter
   const filtered = statusFilter === "all"
@@ -327,8 +352,10 @@ export function ApplicationTable({
       const diff = (b.matchScore ?? 0) - (a.matchScore ?? 0);
       return sortAsc ? -diff : diff;
     }
-    if (sortKey === "sentDate") {
-      const diff = (b.emailSentDate ?? "").localeCompare(a.emailSentDate ?? "");
+    if (sortKey === "updatedAt") {
+      const aDate = a.updatedAt || a.createdAt || "";
+      const bDate = b.updatedAt || b.createdAt || "";
+      const diff = bDate.localeCompare(aDate);
       return sortAsc ? -diff : diff;
     }
     return 0;
@@ -483,15 +510,31 @@ export function ApplicationTable({
           <div className="flex-1" />
           <button
             onClick={() => { onBulkReview(Array.from(selectedIds)); setSelectedIds(new Set()); }}
-            className="text-xs px-3 py-1.5 bg-brand-700 border border-brand-500/30 text-white rounded-lg hover:bg-brand-500 whitespace-nowrap flex items-center gap-1 cursor-pointer transition-colors"
+            className="text-xs px-2 py-1.5 bg-brand-700 border border-brand-500/30 text-white rounded-lg hover:bg-brand-500 flex items-center justify-center cursor-pointer transition-colors"
+            title="Review Selected"
           >
-            <span>👁️</span> Review selected
+            <Eye size={16} />
+          </button>
+          <button
+            onClick={() => { checkOnlineBulk(Array.from(selectedIds)); }}
+            className="text-xs px-2 py-1.5 bg-brand-700 border border-brand-500/30 text-white rounded-lg hover:bg-brand-500 flex items-center justify-center cursor-pointer transition-colors"
+            title="Verify Online Status"
+          >
+            <Search size={16} />
           </button>
           <button
             onClick={() => { onBulkReapply(Array.from(selectedIds)); setSelectedIds(new Set()); }}
-            className="text-xs px-3 py-1.5 bg-brand-700 hover:bg-brand-500 text-white rounded-lg border border-transparent whitespace-nowrap cursor-pointer transition-colors"
+            className="text-xs px-2 py-1.5 bg-brand-700 hover:bg-brand-500 text-white rounded-lg border border-transparent flex items-center justify-center cursor-pointer transition-colors"
+            title="Prepare Selected"
           >
-            Apply selected
+            <Sparkles size={16} />
+          </button>
+          <button
+            onClick={() => { onBulkDelete(Array.from(selectedIds)); setSelectedIds(new Set()); }}
+            className="text-xs px-2 py-1.5 bg-red-600 border border-red-500/30 text-white rounded-lg hover:bg-red-500 flex items-center justify-center cursor-pointer transition-colors"
+            title="Delete Selected"
+          >
+            <Trash2 size={16} />
           </button>
           <button
             onClick={() => { onBulkSend(Array.from(selectedIds)); setSelectedIds(new Set()); }}
@@ -536,8 +579,8 @@ export function ApplicationTable({
                   Match <SortIndicator k="matchScore" sortKey={sortKey} sortAsc={sortAsc} />
                 </th>
                 <th className="px-4 py-3 text-left cursor-pointer select-none hover:text-brand-700"
-                  onClick={() => cycleSort("sentDate")}>
-                  Sent <SortIndicator k="sentDate" sortKey={sortKey} sortAsc={sortAsc} />
+                  onClick={() => cycleSort("updatedAt")}>
+                  Last Updated <SortIndicator k="updatedAt" sortKey={sortKey} sortAsc={sortAsc} />
                 </th>
                 <th className="px-4 py-3 text-left">Follow-up</th>
                 <th className="px-4 py-3 text-left">Status</th>
@@ -578,10 +621,22 @@ export function ApplicationTable({
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-900 font-semibold mt-0.5">
-                          {app.company}
+                        <div className="text-xs text-gray-900 font-semibold mt-0.5 flex items-center gap-1.5">
+                          <span>{app.company}</span>
+                          {app.jobUrl && (
+                            <div 
+                              className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                onlineStatus[app.id] === false ? 'bg-red-500' : 
+                                onlineStatus[app.id] === true ? 'bg-green-500' : 'bg-gray-300'
+                              }`}
+                              title={
+                                onlineStatus[app.id] === false ? "Job is Offline" : 
+                                onlineStatus[app.id] === true ? "Job is Online" : "Status Unknown"
+                              }
+                            />
+                          )}
                           {app.costUsd !== undefined && app.costUsd > 0 && (
-                            <span className="text-[10px] text-purple-600 font-mono font-medium ml-2 bg-purple-50 px-1 py-0.2 rounded border border-purple-100" title={`${app.tokensUsed?.toLocaleString() || 0} tokens`}>
+                            <span className="text-[10px] text-purple-600 font-mono font-medium ml-1 bg-purple-50 px-1 py-0.2 rounded border border-purple-100" title={`${app.tokensUsed?.toLocaleString() || 0} tokens`}>
                               ${app.costUsd.toFixed(4)}
                             </span>
                           )}
@@ -613,7 +668,7 @@ export function ApplicationTable({
                       </td>
 
                       <td className="px-4 py-3 text-xs text-gray-800 font-medium">
-                        {fmtDate(app.emailSentDate) || <span className="text-gray-400">—</span>}
+                        {fmtDate(app.updatedAt || app.createdAt) || <span className="text-gray-400">—</span>}
                       </td>
 
                       <td className="px-4 py-3 text-xs">
@@ -632,41 +687,51 @@ export function ApplicationTable({
                       </td>
 
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           {app.jobUrl && (
-                            <a
-                              href={app.jobUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-gray-600 hover:text-gray-900 font-semibold mr-1 whitespace-nowrap"
+                            <button
+                              onClick={() => checkOnline(app.id, app.jobUrl!)}
+                              className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                              title="Verify Online Status"
                             >
-                              View ↗
-                            </a>
+                              {onlineStatus[app.id] === "checking" ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                            </button>
                           )}
+                          
                           {app.status === "liked" ? (
                             <button
                               onClick={() => onReapply(app)}
                               disabled={reapplyingId === app.id}
-                              className="text-xs bg-brand-300 hover:bg-brand-500 text-brand-900 px-3 py-1.5 rounded-lg font-bold disabled:opacity-50 flex items-center gap-1.5 shadow-sm transition-all hover:scale-[1.02] transform whitespace-nowrap cursor-pointer"
+                              className="p-1.5 bg-brand-50 text-brand-600 rounded-lg hover:bg-brand-100 transition-colors disabled:opacity-50"
+                              title="Prepare Application"
                             >
-                              {reapplyingId === app.id ? <><Spinner /> Preparing...</> : <><span>✨</span> Prepare Application</>}
+                              {reapplyingId === app.id ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                             </button>
                           ) : (
                             <>
-                              <button onClick={() => onReview(app)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                                Review
+                              <button 
+                                onClick={() => onReview(app)} 
+                                className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                                title="Review Details"
+                              >
+                                <Eye size={16} />
                               </button>
                               <button
                                 onClick={() => onReapply(app)}
                                 disabled={reapplyingId === app.id}
-                                className="text-xs text-gray-700 hover:text-gray-900 font-semibold disabled:opacity-50 flex items-center gap-1"
+                                className="p-1.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50"
+                                title="Auto-Fill / Apply"
                               >
-                                {reapplyingId === app.id ? <><Spinner /> Applying...</> : "Apply"}
+                                {reapplyingId === app.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
                               </button>
                             </>
                           )}
-                          <button onClick={() => onDelete(app.id)} className="text-xs text-red-600 hover:text-red-800 font-semibold">
-                            Delete
+                          <button 
+                            onClick={() => onDelete(app.id)} 
+                            className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>

@@ -239,10 +239,11 @@ ${contactName ? `Contact: ${contactName}` : ""}
 Job description summary:
 ${jobDescription.slice(0, 1500)}
 
-Requirements:
+${masterTemplate ? `\nIMPORTANT: The candidate has provided a Master Template. You MUST use this as your primary style, tone, and structure reference:\n---\n${masterTemplate}\n---\n\nRequirements:\n- Adapt the content to match the specific job description and company.\n- Maintain the EXACT tone, flow, and structural layout of the Master Template.\n- Do NOT invent experiences or skills that are not in the candidate's profile or CV.\n- No markdown (no **, no ---, no # headers) — plain text only.\n` : `Requirements:
 - Professional but warm tone — sounds like a real person, not a cover-letter template
 - Reference relevant experience from the candidate's CV — be specific, not generic
-- Mention concrete skills that match the job
+- DO NOT invent or hallucinate any experience, skills, or projects not mentioned in the CV/Profile.
+- Mention concrete skills that match the job based ONLY on the provided candidate profile.
 - Exactly 4 short paragraphs + 1 standalone closing sentence (structure below)
 - Each paragraph: 2-3 sentences, 40-70 words MAX. Total body text: 220-250 words.
 - NO em-dashes, NO hyphens used as dashes, NO semicolons — use plain sentences
@@ -252,10 +253,11 @@ ${hobbies ? `- YOU MUST write exactly 1 warm, personal sentence in P4 that first
 
 Paragraph structure:
   P1 (opening, ~55 words): Hook on something specific about the company or role, then connect it to the candidate's personal drive
-  P2 (experience, ~70 words): 3 concrete things from the candidate's experience that directly match what the job asks for
+  P2 (experience, ~70 words): Concrete things from the candidate's experience that directly match what the job asks for. Do not invent experience.
   P3 (fit, ~50 words): What specifically appeals about this company + one clear tie to the candidate's passion
   P4 (closing, ~50 words): 2 sentences — first sentence MUST start by mentioning the candidate's hobbies and then connect them to professional character; second sentence expresses enthusiasm for this specific company
   Closing line (~13 words, standalone): ${language === "nl" ? '"Graag kom ik langs om mijn motivatie en ervaring verder toe te lichten."' : '"I would welcome the opportunity to discuss my motivation and experience in person."'}
+`}
 
 Output the letter in EXACTLY this structure (use real double line breaks between blocks):
 
@@ -271,21 +273,13 @@ ${language === "nl" ? `Betreft: Sollicitatie ${jobTitle}` : `Re: Application for
 
 [Greeting],
 
-[P1]
+[Body Paragraphs based on requirements above]
 
-[P2]
-
-[P3]
-
-[P4]
-
-[Closing line]
-
+${masterTemplate ? "" : `[Closing line]\n`}
 ${language === "nl" ? "Met vriendelijke groet," : "Kind regards,"}
 
 ${name}
-${contact}
-${masterTemplate ? `\nUse this as your style and structure reference (do NOT copy content, only follow the tone, flow, and format):\n---\n${masterTemplate}\n---` : ""}`,
+${contact}`,
       },
     ],
   });
