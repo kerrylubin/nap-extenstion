@@ -45,6 +45,8 @@ function App() {
   const [autoCheckedIds, setAutoCheckedIds] = useState<Set<string>>(new Set());
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; message: string } | null>(null);
 
+  const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -63,6 +65,10 @@ function App() {
   useEffect(() => {
     if (session) {
       fetchJobs();
+      fetch('http://localhost:3000/api/auth/status')
+        .then(res => res.json())
+        .then(data => setGmailConnected(data.connected))
+        .catch(console.error);
     }
   }, [session]);
 
@@ -385,6 +391,29 @@ function App() {
           <LogOut size={16} />
         </button>
       </header>
+
+      {gmailConnected === false && (
+        <div className="bg-red-50 px-4 py-2 border-b border-red-100 flex items-center justify-between">
+          <span className="text-xs text-red-700 font-medium flex items-center gap-1.5"><LogOut size={12} className="rotate-180" /> Gmail not connected</span>
+          <a
+            href="http://localhost:3000/api/auth/connect"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] bg-red-600 text-white px-2.5 py-1 rounded hover:bg-red-700 font-bold tracking-wide uppercase transition-colors"
+            onClick={() => {
+              // Optimistically check again after 10 seconds
+              setTimeout(() => {
+                fetch('http://localhost:3000/api/auth/status')
+                  .then(res => res.json())
+                  .then(data => setGmailConnected(data.connected))
+                  .catch(console.error);
+              }, 10000);
+            }}
+          >
+            Connect
+          </a>
+        </div>
+      )}
 
       <div className="bg-white border-b border-gray-100 p-3">
         <div className="relative">

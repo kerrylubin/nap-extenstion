@@ -374,8 +374,22 @@ export default function ReviewModal({
 
         {/* Footer */}
         <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
-          {error && <p className="text-[10px] text-red-500 bg-red-50 rounded px-2 py-1.5 mb-2">{error}</p>}
-          {success && <p className="text-[10px] text-green-600 bg-green-50 rounded px-2 py-1.5 mb-2">Sent via Gmail!</p>}
+          {error && (
+            <div className="flex items-center justify-between bg-red-50 rounded px-2 py-1.5 mb-2 border border-red-100">
+              <p className="text-[10px] text-red-600 font-medium">{error}</p>
+              {error.toLowerCase().includes("gmail") && (
+                <a
+                  href="http://localhost:3000/api/auth/connect"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 font-bold ml-2 flex-shrink-0 transition-colors uppercase tracking-wide"
+                >
+                  Connect
+                </a>
+              )}
+            </div>
+          )}
+          {success && <p className="text-[10px] text-green-600 bg-green-50 rounded px-2 py-1.5 mb-2 font-medium">Sent via Gmail! ✓</p>}
           <div className="flex gap-2">
              <button onClick={onClose} className="flex-1 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
                Close
