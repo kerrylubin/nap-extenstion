@@ -1072,6 +1072,7 @@ export default function Home() {
             applications={apps}
             onStatusChange={handleStatusChange}
             onDelete={handleDelete}
+            onBulkDelete={async () => {}}
             onReview={handleReviewSingle}
             onReapply={handleReapply}
             onFieldUpdate={handleFieldUpdate}

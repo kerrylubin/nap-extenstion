@@ -63,6 +63,7 @@ export default function ReviewModal({
 
   async function handleSend() {
     if (!emailTo.trim()) return setError("Please enter an email address.");
+    const isFollowUp = app.status === 'sent' || app.status === 'no_answer';
     if (!letterBase64) return setError("No motivation letter found. Process the job again.");
     setSending(true);
     setError("");
@@ -83,6 +84,7 @@ export default function ReviewModal({
           letterFilename,
           language: app.language,
           recruiterPhone: emailPhone,
+          isFollowUp,
         }),
       });
       const data = await res.json();

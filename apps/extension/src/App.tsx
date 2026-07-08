@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Briefcase, ExternalLink, Trash2, LogOut, ChevronDown, CheckCircle2, Sparkles, Send, Layers, RotateCcw, Calendar, Percent, Loader2, Eye, Search } from 'lucide-react';
+import { Briefcase, ExternalLink, Trash2, LogOut, ChevronDown, CheckCircle2, Sparkles, Send, RotateCcw, Calendar, Percent, Loader2, Eye, Search } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import './App.css';
 
@@ -162,7 +162,7 @@ function App() {
     if (job.job_url) window.open(job.job_url, '_blank');
   };
 
-  const handlePrepare = async (job: Job) => {
+  const handlePrepare = async (job: Job, isFollowUp: boolean = false) => {
     if (preparingIds.has(job.id)) return;
     
     setPreparingIds(prev => {
@@ -172,42 +172,55 @@ function App() {
     });
     
     try {
-      const apiUrl = 'http://localhost:3000/api/process-job';
+      const endpoint = isFollowUp ? 'http://localhost:3000/api/generate-followup' : 'http://localhost:3000/api/process-job';
       
-      const res = await fetch(apiUrl, {
+      const body = isFollowUp ? {
+        jobTitle: job.job_title,
+        company: job.company,
+        contactName: job.contact_name,
+        language: job.language,
+        emailSentDate: job.email_sent_date,
+      } : {
+        jobUrl: job.job_url || undefined,
+      };
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({
-          jobUrl: job.job_url || undefined,
-        })
+        body: JSON.stringify(body)
       });
       
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to process job');
       
-      // Update local db via supabase
-      const { data: updatedApp, error } = await supabase.from('applications').update({
-        job_title: data.jobTitle || job.job_title,
-        company: data.company || job.company,
-        email_body: data.emailBody,
-        letter_base64: data.letterBase64,
-        letter_path: data.letterFilename,
-        letter_text: data.letterText,
-        match_score: data.matchScore,
-        recruiter_email: data.recruiterEmail ?? job.recruiter_email,
-        recruiter_phone: data.recruiterPhone,
-        contact_name: data.contactName,
-        language: data.language,
-        status: 'pending',
-      }).eq('id', job.id).select().single();
-      
-      if (error) throw error;
-      
-      // Update local jobs array
-      setJobs(prevJobs => prevJobs.map(j => j.id === job.id ? updatedApp as Job : j));
+      if (isFollowUp) {
+        const { data: updatedApp, error } = await supabase.from('applications').update({
+          email_body: data.emailBody,
+        }).eq('id', job.id).select().single();
+        if (error) throw error;
+        setJobs(prevJobs => prevJobs.map(j => j.id === job.id ? updatedApp as Job : j));
+      } else {
+        const { data: updatedApp, error } = await supabase.from('applications').update({
+          job_title: data.jobTitle || job.job_title,
+          company: data.company || job.company,
+          email_body: data.emailBody,
+          letter_base64: data.letterBase64,
+          letter_path: data.letterFilename,
+          letter_text: data.letterText,
+          match_score: data.matchScore,
+          recruiter_email: data.recruiterEmail ?? job.recruiter_email,
+          recruiter_phone: data.recruiterPhone,
+          contact_name: data.contactName,
+          language: data.language,
+          status: 'pending',
+        }).eq('id', job.id).select().single();
+        
+        if (error) throw error;
+        setJobs(prevJobs => prevJobs.map(j => j.id === job.id ? updatedApp as Job : j));
+      }
       
     } catch (err: any) {
       alert(`Preparation failed for ${job.company}: ` + err.message);
@@ -224,17 +237,77 @@ function App() {
     const targets = jobs.filter(j => selectedJobIds.has(j.id));
     if (targets.length === 0) return;
     
+    const isFollowUp = filter === 'Follow Up';
     setBulkProgress({ done: 0, total: targets.length, message: `Preparing 1 of ${targets.length}...` });
     
     let currentDone = 0;
     for (const job of targets) {
       setBulkProgress({ done: currentDone, total: targets.length, message: `Preparing ${currentDone + 1} of ${targets.length}...` });
-      await handlePrepare(job);
+      await handlePrepare(job, isFollowUp);
       currentDone++;
     }
     
     setBulkProgress(null);
     setSelectedJobIds(new Set());
+  };
+
+  const handleSendSelected = async () => {
+    const targets = jobs.filter(j => selectedJobIds.has(j.id));
+    if (targets.length === 0) return;
+    
+    // Filter to jobs that have an email and a letter
+    const validTargets = targets.filter(j => j.recruiter_email && j.letter_base64);
+    
+    if (validTargets.length === 0) {
+      alert("None of the selected jobs have an email address or prepared letter to send.");
+      return;
+    }
+    
+    setBulkProgress({ done: 0, total: validTargets.length, message: `Sending 1 of ${validTargets.length}...` });
+    
+    let currentDone = 0;
+    const apiUrl = "http://localhost:3000";
+    
+    for (const job of validTargets) {
+      setBulkProgress({ done: currentDone, total: validTargets.length, message: `Sending ${currentDone + 1} of ${validTargets.length}...` });
+      try {
+        const res = await fetch(`${apiUrl}/api/send-email`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}` 
+          },
+          body: JSON.stringify({
+            applicationId: job.id,
+            to: job.recruiter_email,
+            jobTitle: job.job_title,
+            company: job.company,
+            emailBody: job.email_body || "",
+            letterBase64: job.letter_base64,
+            letterFilename: job.letter_path || `${job.company} Motivatiebrief.pdf`,
+            language: job.language,
+            recruiterPhone: job.recruiter_phone,
+            isFollowUp: filter === 'Follow Up',
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Failed to send email");
+        
+        // Update local jobs array status
+        setJobs(prevJobs => prevJobs.map(j => j.id === job.id ? { ...j, status: 'sent' } : j));
+      } catch (err: any) {
+        alert(`Failed to send email for ${job.company}: ` + err.message);
+      }
+      currentDone++;
+    }
+    
+    setBulkProgress(null);
+    setSelectedJobIds(new Set());
+    if (targets.length > validTargets.length) {
+      alert(`Sent ${validTargets.length} emails. Skipped ${targets.length - validTargets.length} jobs without emails or prepared letters.`);
+    } else {
+      alert(`Successfully sent ${validTargets.length} emails.`);
+    }
   };
 
   const checkJobOnline = (url: string): Promise<boolean> => {
@@ -286,10 +359,6 @@ function App() {
     setSelectedJobIds(new Set());
   };
 
-  const handleOpenWebApp = () => {
-    window.open('http://localhost:3000', '_blank'); // Opens the web app
-  };
-
   const isFollowUpDue = (dateStr?: string) => {
     if (!dateStr) return false;
     const today = new Date();
@@ -307,14 +376,14 @@ function App() {
     'No Answer': jobs.filter(j => j.status === 'no_answer').length,
     'Rejected': jobs.filter(j => j.status === 'rejected').length,
     'Contact': jobs.filter(j => j.status === 'contact').length,
-    'Follow Up': jobs.filter(j => !!j.follow_up_date).length,
+    'Follow Up': jobs.filter(j => !!j.follow_up_date && j.status !== 'rejected').length,
   };
 
   const filteredJobs = jobs.filter(job => {
     if (filter === 'All') return true;
     if (filter === 'Liked') return job.status === 'liked' && !job.recruiter_email;
     if (filter === 'Liked w/ Email') return job.status === 'liked' && !!job.recruiter_email;
-    if (filter === 'Follow Up') return !!job.follow_up_date;
+    if (filter === 'Follow Up') return !!job.follow_up_date && job.status !== 'rejected';
     if (filter === 'No Answer') return job.status === 'no_answer';
     return job.status === filter.toLowerCase();
   });
@@ -459,6 +528,18 @@ function App() {
           {selectedJobIds.size > 0 && (
             <div className="flex gap-2">
                 <button
+                  onClick={handleSendSelected}
+                  disabled={bulkProgress !== null}
+                  className="flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-70"
+                  title="Send Emails for Selected"
+                >
+                  {bulkProgress && bulkProgress.message.includes('Sending') ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                </button>
+                <button
                   onClick={handleCheckStatusSelected}
                   disabled={bulkProgress !== null}
                   className="flex items-center justify-center p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-70"
@@ -486,14 +567,7 @@ function App() {
           )}
         </div>
 
-        {filter === 'Follow Up' && counts['Follow Up'] > 0 && (
-          <button
-            onClick={handleOpenWebApp}
-            className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            <Layers size={16} /> Bulk Follow-Up / Re-Apply ({counts['Follow Up']})
-          </button>
-        )}
+
       </div>
 
       <main className="flex-1 overflow-y-auto bg-gray-50 p-4">
@@ -565,7 +639,7 @@ function App() {
                       <Send size={10} /> {new Date(job.email_sent_date).toLocaleDateString()}
                     </span>
                   )}
-                  {job.follow_up_date && (
+                  {job.follow_up_date && job.status !== 'rejected' && (
                     <span className={`text-xs px-1.5 py-0.5 rounded flex items-center gap-1 font-medium ${isFollowUpDue(job.follow_up_date) ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700'}`}>
                       <Calendar size={10} /> Follow Up: {new Date(job.follow_up_date).toLocaleDateString()}
                     </span>

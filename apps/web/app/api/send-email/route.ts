@@ -18,10 +18,15 @@ export async function POST(req: NextRequest) {
       language,
       cvBase64: incomingCvBase64,
       recruiterPhone,
+      isFollowUp,
     } = body;
 
-    if (!to || !jobTitle || !company || !emailBody || !letterBase64) {
+    if (!to || !jobTitle || !company || !emailBody) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+    }
+    
+    if (!letterBase64) {
+      return NextResponse.json({ error: "Missing letterBase64 for application." }, { status: 400 });
     }
 
     const profile = await getProfile(supabase, user.id);
@@ -56,6 +61,7 @@ export async function POST(req: NextRequest) {
       cvFilename: cleanCvFilename,
       senderName,
       senderEmail,
+      isFollowUp,
     });
 
 

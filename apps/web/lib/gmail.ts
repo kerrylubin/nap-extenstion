@@ -105,10 +105,10 @@ function makeEmailRaw(params: {
   to: string;
   subject: string;
   body: string;
-  cvBase64: string;
-  cvFilename: string;
-  letterBase64: string;
-  letterFilename: string;
+  cvBase64?: string;
+  cvFilename?: string;
+  letterBase64?: string;
+  letterFilename?: string;
   senderName: string;
   senderEmail: string;
 }): string {
@@ -125,22 +125,33 @@ function makeEmailRaw(params: {
     "",
     params.body,
     "",
-    `--${boundary}`,
-    `Content-Type: application/pdf; name="${params.cvFilename}"`,
-    "Content-Transfer-Encoding: base64",
-    `Content-Disposition: attachment; filename="${params.cvFilename}"`,
-    "",
-    params.cvBase64,
-    "",
-    `--${boundary}`,
-    `Content-Type: application/pdf; name="${params.letterFilename}"`,
-    "Content-Transfer-Encoding: base64",
-    `Content-Disposition: attachment; filename="${params.letterFilename}"`,
-    "",
-    params.letterBase64,
-    "",
-    `--${boundary}--`,
   ];
+
+  if (params.cvBase64 && params.cvFilename) {
+    lines.push(
+      `--${boundary}`,
+      `Content-Type: application/pdf; name="${params.cvFilename}"`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename="${params.cvFilename}"`,
+      "",
+      params.cvBase64,
+      ""
+    );
+  }
+
+  if (params.letterBase64 && params.letterFilename) {
+    lines.push(
+      `--${boundary}`,
+      `Content-Type: application/pdf; name="${params.letterFilename}"`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename="${params.letterFilename}"`,
+      "",
+      params.letterBase64,
+      ""
+    );
+  }
+
+  lines.push(`--${boundary}--`);
 
   const raw = lines.join("\r\n");
   return Buffer.from(raw).toString("base64url");
@@ -151,18 +162,19 @@ export async function sendApplicationEmail(params: {
   jobTitle: string;
   company: string;
   emailBody: string;
-  letterBase64: string;
-  letterFilename: string;
+  letterBase64?: string;
+  letterFilename?: string;
   language?: "nl" | "en";
   cvBase64?: string;
   cvFilename?: string;
   senderName: string;
   senderEmail: string;
+  isFollowUp?: boolean;
 }): Promise<string> {
   const auth = await getAuthorizedClient();
   const gmail = google.gmail({ version: "v1", auth });
 
-  // Resolve CV: use passed-in base64, or fall back to local file
+  // Resolve CV: use passed-in base64, or fall back to local file if not a followUp
   let cvBase64 = params.cvBase64;
   const cvFilename = params.cvFilename ?? `${params.senderName} CV.pdf`;
   if (!cvBase64) {
