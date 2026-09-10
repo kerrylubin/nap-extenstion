@@ -222,6 +222,47 @@ export function ReviewModal({
     }
   }
 
+  const [currentLang, setCurrentLang] = useState<"nl" | "en">((app.language as "nl" | "en") || "nl");
+  const [translating, setTranslating] = useState(false);
+
+  async function handleTranslate() {
+    const targetLang = currentLang === "nl" ? "en" : "nl";
+    setTranslating(true);
+    setRegenError("");
+    try {
+      const res = await fetch("/api/translate-application", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: app.id,
+          targetLanguage: targetLang,
+          jobTitle: app.jobTitle,
+          company: app.company,
+          emailBody,
+          letterText,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to translate application");
+      setCurrentLang(targetLang);
+      if (data.emailBody) setEmailBody(data.emailBody);
+      if (data.letterText) setLetterText(data.letterText);
+      if (data.letterBase64) setLetterBase64(data.letterBase64);
+      if (data.letterFilename) setLetterFilename(data.letterFilename.replace(/_/g, " "));
+      onLetterUpdated?.(app.id, {
+        language: targetLang,
+        emailBody: data.emailBody,
+        letterText: data.letterText,
+        letterBase64: data.letterBase64,
+        letterPath: data.letterFilename,
+      });
+    } catch (e: unknown) {
+      setRegenError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTranslating(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] flex flex-col relative">
@@ -253,7 +294,30 @@ export function ReviewModal({
         {/* Header */}
         <div className="flex items-start justify-between mb-4 flex-shrink-0">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">{app.jobTitle}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-gray-900">{app.jobTitle}</h2>
+              <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${currentLang === 'en' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>
+                {currentLang}
+              </span>
+              <button
+                onClick={handleTranslate}
+                disabled={translating}
+                className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300 transition-colors disabled:opacity-50 cursor-pointer ml-1"
+                title={`Translate whole application to ${currentLang === "nl" ? "English" : "Dutch"}`}
+              >
+                {translating ? (
+                  <>
+                    <svg className="animate-spin h-3 w-3 text-brand-900" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Translating...
+                  </>
+                ) : (
+                  <>🌐 Translate to {currentLang === "nl" ? "EN 🇬🇧" : "NL 🇳🇱"}</>
+                )}
+              </button>
+            </div>
             <p className="text-sm text-gray-700 font-medium">{app.company}</p>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-2xl leading-none ml-4">&times;</button>

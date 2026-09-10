@@ -233,15 +233,74 @@ export default function ReviewModal({
     }
   }
 
+  const [currentLang, setCurrentLang] = useState<"nl" | "en">((app.language as "nl" | "en") || "nl");
+  const [translating, setTranslating] = useState(false);
+
+  async function handleTranslate() {
+    const targetLang = currentLang === "nl" ? "en" : "nl";
+    setTranslating(true);
+    setRegenError("");
+    try {
+      const res = await fetch(`${apiUrl}/api/translate-application`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          applicationId: app.id,
+          targetLanguage: targetLang,
+          jobTitle: app.job_title,
+          company: app.company,
+          emailBody,
+          letterText,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to translate application");
+      setCurrentLang(targetLang);
+      if (data.emailBody) setEmailBody(data.emailBody);
+      if (data.letterText) setLetterText(data.letterText);
+      if (data.letterBase64) setLetterBase64(data.letterBase64);
+      if (data.letterFilename) setLetterFilename(data.letterFilename.replace(/_/g, " "));
+      onLetterUpdated?.(app.id, {
+        language: targetLang,
+        email_body: data.emailBody,
+        letter_text: data.letterText,
+        letter_base64: data.letterBase64,
+        letter_path: data.letterFilename,
+      });
+    } catch (e: any) {
+      setRegenError(e.message || String(e));
+    } finally {
+      setTranslating(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 overflow-hidden">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-[360px] h-[90vh] flex flex-col relative my-auto">
         
         {/* Header */}
         <div className="flex items-start justify-between p-4 border-b border-gray-100 flex-shrink-0">
-          <div className="pr-4">
-            <h2 className="text-sm font-bold text-gray-900 line-clamp-1">{app.job_title}</h2>
-            <p className="text-xs text-gray-600 font-medium line-clamp-1">{app.company}</p>
+          <div className="pr-2">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <h2 className="text-sm font-bold text-gray-900 line-clamp-1">{app.job_title}</h2>
+              <span className={`text-[9px] uppercase font-bold px-1 py-0.2 rounded ${currentLang === 'en' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>
+                {currentLang}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-gray-600 font-medium line-clamp-1">{app.company}</p>
+              <button
+                onClick={handleTranslate}
+                disabled={translating}
+                className="text-[10px] font-semibold px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300 transition-colors disabled:opacity-50 cursor-pointer"
+                title={`Translate whole application to ${currentLang === "nl" ? "English" : "Dutch"}`}
+              >
+                {translating ? "Translating..." : `🌐 Translate to ${currentLang === "nl" ? "EN 🇬🇧" : "NL 🇳🇱"}`}
+              </button>
+            </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-800 text-xl leading-none">&times;</button>
         </div>

@@ -3,7 +3,7 @@ import { chromium } from "playwright";
 import { requireUser } from "@/lib/supabase/server";
 import { getCVForLanguage, downloadCVBuffer } from "@/lib/storage";
 import Anthropic from "@anthropic-ai/sdk";
-import { calculateCost } from "@/lib/anthropic";
+import { calculateCost, safeParseJson, detectLanguage } from "@/lib/anthropic";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { chromium: stealthChromium } = require("playwright-extra");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -25,48 +25,7 @@ export interface ScrapedJob {
   language?: "nl" | "en";
 }
 
-function detectLanguage(title: string, snippet: string): "nl" | "en" {
-  const text = `${title} ${snippet}`.toLowerCase();
-  
-  // Dutch stop words and common terms
-  const dutchWords = [
-    " en ", " de ", " het ", " een ", " van ", " ik ", " je ", " met ", " voor ", " op ", 
-    " te ", " zijn ", " is ", " was ", " dat ", " die ", " in ", " op ", " om ", " ter ", 
-    " aan ", " door ", " over ", " bij ", " tot ", " uit ", " naar ", " als ", 
-    " solliciteer ", " sollicitatie ", " vacature ", " werkzaamheden ", " functie ", 
-    " vereisten ", " profiel ", " bieden ", " zoeken ", " team ", " ervaring ", " gezocht ",
-    " recruitment ", " solliciteren ", " wij ", " ons ", " onze ", " jouw ", " bent "
-  ];
-  
-  // English stop words and common terms
-  const englishWords = [
-    " and ", " the ", " of ", " a ", " to ", " in ", " for ", " with ", " on ", " at ", 
-    " by ", " from ", " this ", " that ", " you ", " we ", " our ", " your ", " job ", 
-    " position ", " vacancy ", " apply ", " requirements ", " description ", " offer ",
-    " looking ", " candidate ", " skills ", " role ", " team ", " joining ", " responsibilities "
-  ];
 
-  let dutchCount = 0;
-  let englishCount = 0;
-
-  for (const word of dutchWords) {
-    if (text.includes(word)) {
-      dutchCount += text.split(word).length - 1;
-    }
-  }
-
-  for (const word of englishWords) {
-    if (text.includes(word)) {
-      englishCount += text.split(word).length - 1;
-    }
-  }
-
-  // Add specific keyword boosts
-  if (text.includes("solliciteren") || text.includes("vacature") || text.includes("gezocht")) dutchCount += 3;
-  if (text.includes("hiring") || text.includes("vacancy") || text.includes("apply now")) englishCount += 3;
-
-  return dutchCount >= englishCount ? "nl" : "en";
-}
 
 const PROFILE_QUERIES = [
   "junior software developer",
@@ -128,7 +87,7 @@ async function searchJSearch(query: string, location?: string, pageNum = 1): Pro
       snippet: (job.job_description ?? "").slice(0, 200),
       link: job.job_apply_link ?? "",
       source: source,
-      language: detectLanguage(job.job_title ?? "", job.job_description ?? ""),
+      language: detectLanguage(`${job.job_title ?? ""} ${job.job_description ?? ""}`),
     };
   }).filter((j: ScrapedJob) => j.title && j.link);
 }
@@ -181,7 +140,7 @@ async function scrapeTalent(query: string, pageNum = 1, location?: string): Prom
     });
 
     results.forEach((j: { title: string; company: string; location: string; snippet: string; link: string }, i: number) =>
-      jobs.push({ ...j, id: `talent-${query}-p${pageNum}-${i}`, source: "Talent.com", language: detectLanguage(j.title, j.snippet) })
+      jobs.push({ ...j, id: `talent-${query}-p${pageNum}-${i}`, source: "Talent.com", language: detectLanguage(`${j.title} ${j.snippet}`) })
     );
   } catch (err) {
     console.error("[talent] Scrape failed:", err);
@@ -267,7 +226,7 @@ async function scrapeMagnet(query: string, pageNum = 1, location?: string): Prom
     });
 
     results.forEach((j: { title: string; company: string; location: string; snippet: string; link: string }, i: number) =>
-      jobs.push({ ...j, id: `magnet-${query}-p${pageNum}-${i}`, source: "Magnet.me", language: detectLanguage(j.title, j.snippet) })
+      jobs.push({ ...j, id: `magnet-${query}-p${pageNum}-${i}`, source: "Magnet.me", language: detectLanguage(`${j.title} ${j.snippet}`) })
     );
   } catch (err) {
     console.error("[magnet] Scrape failed:", err);
@@ -403,7 +362,7 @@ async function scrapeIntermediair(query: string, pageNum = 1, location?: string)
     }
 
     results.forEach((j: { title: string; company: string; location: string; snippet: string; link: string }, i: number) =>
-      jobs.push({ ...j, id: `intermediair-${query}-p${pageNum}-${i}`, source: "Intermediair", language: detectLanguage(j.title, j.snippet) })
+      jobs.push({ ...j, id: `intermediair-${query}-p${pageNum}-${i}`, source: "Intermediair", language: detectLanguage(`${j.title} ${j.snippet}`) })
     );
   } catch (err) {
     console.error("[intermediair] Scrape failed:", err);
@@ -524,7 +483,7 @@ No explanation, no markdown.`,
           }],
         });
         const raw = (msg.content[0] as { type: string; text: string }).text.trim();
-        const scores: number[] = JSON.parse(raw.replace(/```json|```/g, "").trim());
+        const scores: number[] = safeParseJson(raw);
         jobs = deduped.map((job, i) => ({
           ...job,
           matchScore: typeof scores[i] === "number" ? Math.min(100, Math.max(0, scores[i])) : undefined,

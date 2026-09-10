@@ -59,6 +59,12 @@ export const AutofillButton: React.FC<AutofillButtonProps> = ({ form }) => {
           valueToSet = profile.email;
         } else if (name.includes('phone') || name.includes('mobile') || name.includes('tel')) {
           valueToSet = profile?.phone || '';
+        } else if (name.includes('ref') && (name.includes('name') || name.includes('contact')) && profile?.reference_name) {
+          valueToSet = profile.reference_name;
+        } else if (name.includes('ref') && (name.includes('phone') || name.includes('number') || name.includes('tel')) && profile?.reference_phone) {
+          valueToSet = profile.reference_phone;
+        } else if (name.includes('ref') && name.includes('linkedin') && profile?.reference_linkedin) {
+          valueToSet = profile.reference_linkedin;
         } else if (input.tagName.toLowerCase() === 'textarea' && application?.email_body) {
           valueToSet = application.email_body;
         }

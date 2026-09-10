@@ -17,7 +17,6 @@ import {
   getProfile,
 } from "@/lib/storage";
 import { ProcessJobRequest, ProcessJobResult } from "@/types";
-import { getDefaultEmailTemplate } from "@/lib/defaults";
 import { PDFParse } from "pdf-parse";
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -85,6 +84,10 @@ export async function POST(req: NextRequest) {
       phone: profile?.phone,
       address: profile?.address,
       hobbies: hobbies || profile?.hobbies,
+      personalNotes: profile?.personalNotes,
+      referenceName: profile?.referenceName,
+      referencePhone: profile?.referencePhone,
+      referenceLinkedin: profile?.referenceLinkedin,
     };
     const { jobTitle, company, recruiterEmail, recruiterPhone, contactName, language, usage: infoUsage } = infoResult;
 
@@ -112,7 +115,7 @@ export async function POST(req: NextRequest) {
 
     // Step 4: Generate email + letter + score (parallel, all have cvText now)
     const [emailResult, letterResult, scoreResult] = await Promise.all([
-      generateEmailBody({ jobTitle, company, contactName, language, masterTemplate: profile?.masterEmailTemplate ?? getDefaultEmailTemplate(userProfile), userProfile }),
+      generateEmailBody({ jobTitle, company, contactName, language, jobDescription, masterTemplate: profile?.masterEmailTemplate, userProfile }),
       generateMotivationLetter({ jobTitle, company, contactName, jobDescription, language, cvText, masterTemplate: profile?.masterLetterTemplate, userProfile }),
       scoreMatch(jobDescription, cvText),
     ]);

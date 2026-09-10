@@ -291,7 +291,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jobUrl: app.jobUrl || undefined,
-          rawJobText: app.jobUrl ? undefined : app.jobDescription,
+          rawJobText: app.jobDescription || undefined,
           hobbies: localStorage.getItem("napai_hobbies") || undefined,
         }),
       });
@@ -345,7 +345,7 @@ export default function Home() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             jobUrl: app.jobUrl || undefined,
-            rawJobText: app.jobUrl ? undefined : app.jobDescription,
+            rawJobText: app.jobDescription || undefined,
             hobbies: localStorage.getItem("napai_hobbies") || undefined,
           }),
         });
@@ -480,6 +480,7 @@ export default function Home() {
           company: job.company,
           jobUrl: job.link,
           matchScore: job.matchScore,
+          snippet: job.snippet,
           language: job.language || "nl",
           status: "liked" as ApplicationStatus,
         }),

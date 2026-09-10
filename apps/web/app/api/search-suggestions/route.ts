@@ -3,7 +3,7 @@ import { PDFParse } from "pdf-parse";
 import { requireUser } from "@/lib/supabase/server";
 import { getCVForLanguage, downloadCVBuffer } from "@/lib/storage";
 import Anthropic from "@anthropic-ai/sdk";
-import { calculateCost } from "@/lib/anthropic";
+import { calculateCost, safeParseJson } from "@/lib/anthropic";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
@@ -42,8 +42,7 @@ ${cvText}`,
     });
 
     const text = (msg.content[0] as { type: string; text: string }).text.trim();
-    const clean = text.replace(/```json|```/g, "").trim();
-    const suggestions = JSON.parse(clean);
+    const suggestions = safeParseJson(text);
 
     const usage = calculateCost("claude-haiku-4-5-20251001", msg.usage.input_tokens, msg.usage.output_tokens);
     const suggestionUsage = {

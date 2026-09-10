@@ -32,6 +32,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Always detect language with AI on the text AFTER the job title when saving/liking
+    if (body.jobDescription || body.snippet) {
+      const textToAnalyze = body.jobDescription || body.snippet;
+      const { detectLanguageWithAI } = await import("@/lib/anthropic");
+      body.language = await detectLanguageWithAI(textToAnalyze, body.jobTitle);
+    }
+
     const app = await addApplication(supabase, user.id, body);
     return NextResponse.json(app, { status: 201 });
   } catch (err) {

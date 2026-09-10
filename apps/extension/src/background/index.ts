@@ -22,6 +22,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: any, sendResponse: 
         job_title: job.title,
         company: job.company,
         job_description: job.description,
+        language: job.language,
         status: 'liked'
       }).then(({ error }) => {
         if (error) {
@@ -82,7 +83,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: any, sendResponse: 
           // Fetch Profile
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('name, email, phone')
+            .select('name, email, phone, reference_name, reference_phone, reference_linkedin, personal_notes')
             .eq('id', session.user.id)
             .maybeSingle();
 

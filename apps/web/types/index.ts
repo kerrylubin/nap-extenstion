@@ -52,6 +52,10 @@ export interface Profile {
   phone?: string;
   address?: string;
   hobbies?: string;
+  personalNotes?: string;
+  referenceName?: string;
+  referencePhone?: string;
+  referenceLinkedin?: string;
   masterEmailTemplate?: string;
   masterLetterTemplate?: string;
   onboardingComplete?: boolean;

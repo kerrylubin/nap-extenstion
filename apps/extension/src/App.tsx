@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Briefcase, ExternalLink, Trash2, LogOut, ChevronDown, CheckCircle2, Sparkles, Send, RotateCcw, Calendar, Percent, Loader2, Eye, Search } from 'lucide-react';
+import { Briefcase, ExternalLink, Trash2, LogOut, ChevronDown, CheckCircle2, Sparkles, Send, RotateCcw, Calendar, Percent, Loader2, Eye, Search, FileText, User, Download } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import './App.css';
 
@@ -26,7 +26,7 @@ interface Job {
   job_description?: string;
 }
 
-type FilterOption = 'All' | 'Liked' | 'Liked w/ Email' | 'Pending' | 'Sent' | 'Interview' | 'No Answer' | 'Rejected' | 'Contact' | 'Follow Up';
+type FilterOption = 'All' | 'Duplicates' | 'Liked' | 'Liked w/ Email' | 'Pending' | 'Sent' | 'Interview' | 'No Answer' | 'Rejected' | 'Contact' | 'Follow Up';
 
 import ReviewModal from './components/ReviewModal';
 
@@ -44,6 +44,61 @@ function App() {
   const [checkingStatusIds, setCheckingStatusIds] = useState<Set<string>>(new Set());
   const [autoCheckedIds, setAutoCheckedIds] = useState<Set<string>>(new Set());
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; message: string } | null>(null);
+  const [exportingZip, setExportingZip] = useState(false);
+
+  const handleExportSelectedZip = async () => {
+    const selected = jobs.filter((j) => selectedJobIds.has(j.id));
+    const jobsWithPdf = selected.filter((j) => j.letter_base64 || j.letter_text);
+
+    if (jobsWithPdf.length === 0) {
+      alert("None of the selected applications have a motivation letter. Prepare them first!");
+      return;
+    }
+
+    setExportingZip(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      for (let i = 0; i < jobsWithPdf.length; i++) {
+        const job = jobsWithPdf[i];
+        const safeCompany = (job.company || "Company").replace(/[/\\?%*:|"<>]/g, "_");
+        const safeTitle = (job.job_title || "Job").replace(/[/\\?%*:|"<>]/g, "_");
+        const defaultFilename = job.language === "en"
+          ? `${safeTitle} Motivational letter.pdf`
+          : `${safeCompany} Motivatiebrief.pdf`;
+
+        const filename = (job.letter_path || defaultFilename).replace(/[/\\?%*:|"<>]/g, "_");
+
+        if (job.letter_base64) {
+          const binaryString = atob(job.letter_base64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let j = 0; j < binaryString.length; j++) {
+            bytes[j] = binaryString.charCodeAt(j);
+          }
+          zip.file(filename, bytes);
+        } else if (job.letter_text) {
+          const txtFilename = filename.replace(/\.pdf$/i, ".txt");
+          zip.file(txtFilename, job.letter_text);
+        }
+      }
+
+      const content = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(content);
+      link.download = `Motivation_Letters_${new Date().toISOString().slice(0, 10)}.zip`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error("Failed to generate ZIP export in extension:", err);
+      alert("Export failed: " + String(err));
+    } finally {
+      setExportingZip(false);
+    }
+  };
+
+  const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
+  const [editingDescriptionText, setEditingDescriptionText] = useState("");
 
   const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
 
@@ -162,6 +217,23 @@ function App() {
     if (job.job_url) window.open(job.job_url, '_blank');
   };
 
+  const handleSaveDescription = async (jobId: string) => {
+    try {
+      const { data, error } = await supabase.from('applications')
+        .update({ job_description: editingDescriptionText })
+        .eq('id', jobId)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      setJobs(prev => prev.map(j => j.id === jobId ? data as Job : j));
+      setEditingDescriptionId(null);
+    } catch (err: any) {
+      alert("Failed to save description: " + err.message);
+    }
+  };
+
   const handlePrepare = async (job: Job, isFollowUp: boolean = false) => {
     if (preparingIds.has(job.id)) return;
     
@@ -182,6 +254,7 @@ function App() {
         emailSentDate: job.email_sent_date,
       } : {
         jobUrl: job.job_url || undefined,
+        rawJobText: job.job_description || undefined,
       };
 
       const res = await fetch(endpoint, {
@@ -359,6 +432,23 @@ function App() {
     setSelectedJobIds(new Set());
   };
 
+  const handleDeleteSelected = async () => {
+    const targets = Array.from(selectedJobIds);
+    if (targets.length === 0) return;
+    
+    if (window.confirm(`Are you sure you want to delete these ${targets.length} application(s)?`)) {
+      try {
+        const { error } = await supabase.from('applications').delete().in('id', targets);
+        if (error) throw error;
+        setJobs(prevJobs => prevJobs.filter(j => !selectedJobIds.has(j.id)));
+      } catch (err: any) {
+        alert("Failed to delete selected applications: " + err.message);
+      } finally {
+        setSelectedJobIds(new Set());
+      }
+    }
+  };
+
   const isFollowUpDue = (dateStr?: string) => {
     if (!dateStr) return false;
     const today = new Date();
@@ -366,8 +456,30 @@ function App() {
     return followUp <= today;
   };
 
+  const getDuplicateIds = (list: Job[]) => {
+    const ids = new Set<string>();
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      for (let j = i + 1; j < list.length; j++) {
+        const b = list[j];
+        const urlMatch = a.job_url && b.job_url && a.job_url === b.job_url;
+        const infoMatch = a.company && b.company && a.job_title && b.job_title &&
+          a.company.trim().toLowerCase() === b.company.trim().toLowerCase() &&
+          a.job_title.trim().toLowerCase() === b.job_title.trim().toLowerCase();
+        if (urlMatch || infoMatch) {
+          ids.add(a.id);
+          ids.add(b.id);
+        }
+      }
+    }
+    return ids;
+  };
+
+  const duplicateIds = getDuplicateIds(jobs);
+
   const counts = {
     'All': jobs.length,
+    'Duplicates': duplicateIds.size,
     'Liked': jobs.filter(j => j.status === 'liked' && !j.recruiter_email).length,
     'Liked w/ Email': jobs.filter(j => j.status === 'liked' && !!j.recruiter_email).length,
     'Pending': jobs.filter(j => j.status === 'pending').length,
@@ -381,6 +493,7 @@ function App() {
 
   const filteredJobs = jobs.filter(job => {
     if (filter === 'All') return true;
+    if (filter === 'Duplicates') return duplicateIds.has(job.id);
     if (filter === 'Liked') return job.status === 'liked' && !job.recruiter_email;
     if (filter === 'Liked w/ Email') return job.status === 'liked' && !!job.recruiter_email;
     if (filter === 'Follow Up') return !!job.follow_up_date && job.status !== 'rejected';
@@ -456,9 +569,20 @@ function App() {
           <Briefcase className="text-brand-500" />
           <h1 className="text-lg font-semibold tracking-tight">NAPAI Saved Jobs</h1>
         </div>
-        <button onClick={handleLogout} className="text-gray-500 hover:text-gray-900 transition-colors" title="Sign out">
-          <LogOut size={16} />
-        </button>
+        <div className="flex items-center gap-3">
+          <a
+            href="http://localhost:3000/profile"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1 text-gray-500 hover:text-gray-900 hover:bg-brand-100/50 rounded transition-colors"
+            title="Profile & Settings"
+          >
+            <User size={16} />
+          </a>
+          <button onClick={handleLogout} className="p-1 text-gray-500 hover:text-gray-900 hover:bg-brand-100/50 rounded transition-colors" title="Sign out">
+            <LogOut size={16} />
+          </button>
+        </div>
       </header>
 
       {gmailConnected === false && (
@@ -495,6 +619,7 @@ function App() {
             }}
           >
             <option value="All">All ({counts['All']})</option>
+            <option value="Duplicates">Duplicates 👥 ({counts['Duplicates']})</option>
             <option value="Liked">Liked ❤️ ({counts['Liked']})</option>
             <option value="Liked w/ Email">Liked w/ Email ✉️ ({counts['Liked w/ Email']})</option>
             <option value="Pending">Pending ({counts['Pending']})</option>
@@ -563,6 +688,22 @@ function App() {
                   <Sparkles size={16} />
                 )}
               </button>
+              <button
+                onClick={handleExportSelectedZip}
+                disabled={exportingZip}
+                className="flex items-center justify-center p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-70"
+                title="Export Motivation Letters (.zip)"
+              >
+                {exportingZip ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                disabled={bulkProgress !== null}
+                className="flex items-center justify-center p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-70"
+                title="Delete Selected"
+              >
+                <Trash2 size={16} />
+              </button>
             </div>
           )}
         </div>
@@ -629,6 +770,11 @@ function App() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-2 mt-1">
+                  {job.language && (
+                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${job.language === 'en' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}`}>
+                      {job.language}
+                    </span>
+                  )}
                   {job.match_score !== undefined && job.match_score > 0 && (
                     <span className="text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
                       <Percent size={10} /> {job.match_score}% Match
@@ -653,14 +799,26 @@ function App() {
                   
                   <div className="flex gap-1">
                     {job.status === 'liked' && !job.email_body && (
-                      <button 
-                        onClick={() => handlePrepare(job)}
-                        disabled={preparingIds.has(job.id)}
-                        className="flex items-center justify-center p-2 bg-brand-50 text-brand-600 rounded-lg hover:bg-brand-100 transition-colors disabled:opacity-60"
-                        title="Prepare Application"
-                      >
-                        {preparingIds.has(job.id) ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                      </button>
+                      <>
+                        <button 
+                          onClick={() => {
+                            setEditingDescriptionId(job.id);
+                            setEditingDescriptionText(job.job_description || "");
+                          }}
+                          className="flex items-center justify-center p-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                          title="Paste Job Description"
+                        >
+                          <FileText size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handlePrepare(job)}
+                          disabled={preparingIds.has(job.id)}
+                          className="flex items-center justify-center p-2 bg-brand-50 text-brand-600 rounded-lg hover:bg-brand-100 transition-colors disabled:opacity-60"
+                          title="Prepare Application"
+                        >
+                          {preparingIds.has(job.id) ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                        </button>
+                      </>
                     )}
                     
                     {(job.status === 'pending' || (job.status === 'liked' && job.email_body)) ? (
@@ -715,6 +873,31 @@ function App() {
                     </button>
                   </div>
                 </div>
+
+                {editingDescriptionId === job.id && (
+                  <div className="mt-2 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2">
+                    <textarea
+                      value={editingDescriptionText}
+                      onChange={(e) => setEditingDescriptionText(e.target.value)}
+                      placeholder="Paste the job description here so the AI can use it directly..."
+                      className="w-full text-xs p-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-brand-500 focus:outline-none min-h-[100px] resize-y"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => setEditingDescriptionId(null)}
+                        className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleSaveDescription(job.id)}
+                        className="px-3 py-1 text-xs font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 transition-colors"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

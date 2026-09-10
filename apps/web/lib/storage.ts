@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { JobApplication, CV, Profile, ApplicationStatus } from "@/types";
+import { detectLanguage } from "./anthropic";
 
 // ─────────────────────────────────────────────
 // Mapping helpers (Postgres snake_case ↔ TS camelCase)
@@ -55,7 +56,11 @@ function toApplicationRow(app: Partial<JobApplication>, userId?: string) {
   if (app.recruiterEmail !== undefined) row.recruiter_email = app.recruiterEmail;
   if (app.recruiterPhone !== undefined) row.recruiter_phone = app.recruiterPhone;
   if (app.contactName !== undefined) row.contact_name = app.contactName;
-  if (app.language !== undefined) row.language = app.language;
+  if (app.language !== undefined) {
+    row.language = app.language;
+  } else if (app.jobDescription !== undefined && app.jobDescription) {
+    row.language = detectLanguage(app.jobDescription);
+  }
   if (app.matchScore !== undefined) row.match_score = app.matchScore;
   if (app.status !== undefined) row.status = app.status;
   if (app.emailBody !== undefined) row.email_body = app.emailBody;
@@ -114,6 +119,10 @@ function toProfile(row: Record<string, any>): Profile {
     phone: row.phone ?? undefined,
     address,
     hobbies,
+    personalNotes: row.personal_notes ?? undefined,
+    referenceName: row.reference_name ?? undefined,
+    referencePhone: row.reference_phone ?? undefined,
+    referenceLinkedin: row.reference_linkedin ?? undefined,
     masterEmailTemplate: row.master_email_template ?? undefined,
     masterLetterTemplate: row.master_letter_template ?? undefined,
     onboardingComplete: row.onboarding_complete ?? false,
@@ -252,9 +261,6 @@ export async function getCVForLanguage(
     .eq("language", language)
     .single();
   if (exact) return toCV(exact);
-
-  // Fall back to English CV for English jobs
-  if (language === "en") return null;
 
   // Fall back to primary CV
   const { data: primary } = await supabase
@@ -396,7 +402,7 @@ export async function getProfile(
 export async function updateProfile(
   supabase: SupabaseClient,
   userId: string,
-  updates: Partial<Pick<Profile, "name" | "phone" | "address" | "hobbies" | "masterEmailTemplate" | "masterLetterTemplate" | "onboardingComplete">>
+  updates: Partial<Pick<Profile, "name" | "phone" | "address" | "hobbies" | "personalNotes" | "referenceName" | "referencePhone" | "referenceLinkedin" | "masterEmailTemplate" | "masterLetterTemplate" | "onboardingComplete">>
 ): Promise<Profile> {
   // Ensure profile row exists and get current values for merging
   const current = await getProfile(supabase, userId);
@@ -408,6 +414,10 @@ export async function updateProfile(
   if (updates.masterEmailTemplate !== undefined) row.master_email_template = updates.masterEmailTemplate;
   if (updates.masterLetterTemplate !== undefined) row.master_letter_template = updates.masterLetterTemplate;
   if (updates.onboardingComplete !== undefined) row.onboarding_complete = updates.onboardingComplete;
+  if (updates.personalNotes !== undefined) row.personal_notes = updates.personalNotes;
+  if (updates.referenceName !== undefined) row.reference_name = updates.referenceName;
+  if (updates.referencePhone !== undefined) row.reference_phone = updates.referencePhone;
+  if (updates.referenceLinkedin !== undefined) row.reference_linkedin = updates.referenceLinkedin;
 
   // Combine address and hobbies into the address column
   if (updates.address !== undefined || updates.hobbies !== undefined) {

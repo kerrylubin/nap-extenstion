@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendApplicationEmail } from "@/lib/gmail";
 import { requireUser } from "@/lib/supabase/server";
 import { updateApplication, getCVForLanguage, downloadCVBuffer, getProfile } from "@/lib/storage";
+import { generateFollowUpEmail, UserProfile } from "@/lib/anthropic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,6 +19,7 @@ export async function POST(req: NextRequest) {
       language,
       cvBase64: incomingCvBase64,
       recruiterPhone,
+      contactName,
       isFollowUp,
     } = body;
 
@@ -75,6 +77,35 @@ export async function POST(req: NextRequest) {
         recruiterEmail: to,
         recruiterPhone: recruiterPhone || undefined,
       });
+
+      // Auto-generate the follow-up draft in the background so it's ready when needed.
+      // Only do this for initial application sends, not for follow-up sends.
+      if (!isFollowUp) {
+        const emailSentDate = new Date().toISOString();
+        const userProfile: UserProfile = {
+          name: senderName,
+          email: senderEmail,
+          phone: profile?.phone,
+          address: profile?.address,
+          hobbies: profile?.hobbies,
+        };
+        generateFollowUpEmail({
+          jobTitle,
+          company,
+          contactName: contactName || undefined,
+          language: (language ?? "nl") as "nl" | "en",
+          emailSentDate,
+          userProfile,
+        })
+          .then(({ emailBody }) =>
+            updateApplication(supabase, user.id, applicationId, {
+              followUpEmailBody: emailBody,
+            })
+          )
+          .catch((err) =>
+            console.warn("[send-email] Background follow-up draft generation failed:", err)
+          );
+      }
     }
 
     return NextResponse.json({ success: true });

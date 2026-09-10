@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateMotivationLetter, UserProfile, calculateCost, TokenUsage } from "@/lib/anthropic";
+import { generateMotivationLetter, UserProfile, calculateCost, TokenUsage, detectLanguage } from "@/lib/anthropic";
 import { generateLetterPDF } from "@/lib/pdf-generator";
 import { requireUser } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/storage";
@@ -19,6 +19,10 @@ export async function POST(req: NextRequest) {
       phone: profile?.phone,
       address: profile?.address,
       hobbies: hobbies || profile?.hobbies,
+      personalNotes: profile?.personalNotes,
+      referenceName: profile?.referenceName,
+      referencePhone: profile?.referencePhone,
+      referenceLinkedin: profile?.referenceLinkedin,
     };
 
     let letterText: string;
@@ -28,6 +32,7 @@ export async function POST(req: NextRequest) {
       const msg = await client.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 900,
+        temperature: 0.8,
         messages: [{
           role: "user",
           content: `Here is a motivation letter:\n\n${currentLetter}\n\nUser instruction: ${prompt}\n\nRewrite the letter applying this instruction. Keep the same structure and length. Return plain text only — no markdown, no **, no ---.`,
@@ -41,7 +46,7 @@ export async function POST(req: NextRequest) {
         company,
         contactName,
         jobDescription,
-        language,
+        language: jobDescription ? detectLanguage(jobDescription) : language,
         userProfile,
         masterTemplate: profile?.masterLetterTemplate,
       });

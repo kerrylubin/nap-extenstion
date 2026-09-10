@@ -2,7 +2,7 @@
 import { Fragment, useState, useRef, useEffect } from "react";
 import { JobApplication, ApplicationStatus } from "@/types";
 import { StatusBadge } from "./StatusBadge";
-import { Sparkles, Trash2, Eye, Search, CheckCircle2, Loader2, Send } from "lucide-react";
+import { Sparkles, Trash2, Eye, Search, CheckCircle2, Loader2, Send, Download } from "lucide-react";
 
 const STATUS_OPTIONS: { value: ApplicationStatus; label: string }[] = [
   { value: "pending", label: "Pending" },
@@ -14,8 +14,9 @@ const STATUS_OPTIONS: { value: ApplicationStatus; label: string }[] = [
   { value: "contact", label: "Contact" },
 ];
 
-const STATUS_FILTERS: { value: ApplicationStatus | "all" | "liked_with_contact"; label: string }[] = [
+const STATUS_FILTERS: { value: ApplicationStatus | "all" | "liked_with_contact" | "duplicates"; label: string }[] = [
   { value: "all", label: "All" },
+  { value: "duplicates", label: "Duplicates 👥" },
   { value: "liked", label: "Liked ❤️" },
   { value: "liked_with_contact", label: "Liked w/ Email ✉️" },
   { value: "pending", label: "Pending" },
@@ -313,10 +314,62 @@ export function ApplicationTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<ApplicationStatus>("sent");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all" | "liked_with_contact">("all");
+  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all" | "liked_with_contact" | "duplicates">("all");
   const [sortKey, setSortKey] = useState<SortKey>("none");
   const [sortAsc, setSortAsc] = useState(false);
   const [onlineStatus, setOnlineStatus] = useState<Record<string, boolean | "checking">>({});
+  const [exportingZip, setExportingZip] = useState(false);
+
+  async function exportSelectedZip() {
+    const selectedApps = applications.filter((a) => selectedIds.has(a.id));
+    const appsWithPdf = selectedApps.filter((a) => a.letterBase64 || a.letterText);
+
+    if (appsWithPdf.length === 0) {
+      alert("None of the selected applications have a motivation letter. Prepare them first!");
+      return;
+    }
+
+    setExportingZip(true);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+
+      for (let i = 0; i < appsWithPdf.length; i++) {
+        const app = appsWithPdf[i];
+        const safeCompany = (app.company || "Company").replace(/[/\\?%*:|"<>]/g, "_");
+        const safeTitle = (app.jobTitle || "Job").replace(/[/\\?%*:|"<>]/g, "_");
+        const defaultFilename = app.language === "en"
+          ? `${safeTitle} Motivational letter.pdf`
+          : `${safeCompany} Motivatiebrief.pdf`;
+
+        const filename = (app.letterPath || defaultFilename).replace(/[/\\?%*:|"<>]/g, "_");
+
+        if (app.letterBase64) {
+          const binaryString = atob(app.letterBase64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let j = 0; j < binaryString.length; j++) {
+            bytes[j] = binaryString.charCodeAt(j);
+          }
+          zip.file(filename, bytes);
+        } else if (app.letterText) {
+          const txtFilename = filename.replace(/\.pdf$/i, ".txt");
+          zip.file(txtFilename, app.letterText);
+        }
+      }
+
+      const content = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(content);
+      link.download = `Motivation_Letters_${new Date().toISOString().slice(0, 10)}.zip`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error("Failed to generate ZIP export:", err);
+      alert("Export failed: " + String(err));
+    } finally {
+      setExportingZip(false);
+    }
+  }
   
   const checkOnline = async (id: string, url: string) => {
     setOnlineStatus(prev => ({ ...prev, [id]: "checking" }));
@@ -339,11 +392,35 @@ export function ApplicationTable({
     }
   };
 
+  // Helper to find all duplicate applications sharing the same URL or Company + Title
+  const getDuplicateIds = (apps: JobApplication[]) => {
+    const ids = new Set<string>();
+    for (let i = 0; i < apps.length; i++) {
+      const a = apps[i];
+      for (let j = i + 1; j < apps.length; j++) {
+        const b = apps[j];
+        const urlMatch = a.jobUrl && b.jobUrl && a.jobUrl === b.jobUrl;
+        const infoMatch = a.company && b.company && a.jobTitle && b.jobTitle &&
+          a.company.trim().toLowerCase() === b.company.trim().toLowerCase() &&
+          a.jobTitle.trim().toLowerCase() === b.jobTitle.trim().toLowerCase();
+        if (urlMatch || infoMatch) {
+          ids.add(a.id);
+          ids.add(b.id);
+        }
+      }
+    }
+    return ids;
+  };
+
+  const duplicateIds = getDuplicateIds(applications);
+
   // Filter
   const filtered = statusFilter === "all"
     ? applications
     : statusFilter === "liked_with_contact"
     ? applications.filter((a) => a.status === "liked" && a.recruiterEmail)
+    : statusFilter === "duplicates"
+    ? applications.filter((a) => duplicateIds.has(a.id))
     : applications.filter((a) => a.status === statusFilter);
 
   // Sort
@@ -410,6 +487,8 @@ export function ApplicationTable({
               ? applications.length
               : f.value === "liked_with_contact"
               ? applications.filter((a) => a.status === "liked" && a.recruiterEmail).length
+              : f.value === "duplicates"
+              ? duplicateIds.size
               : applications.filter((a) => a.status === f.value).length;
             return (
               <button
@@ -530,6 +609,15 @@ export function ApplicationTable({
             <Sparkles size={16} />
           </button>
           <button
+            onClick={exportSelectedZip}
+            disabled={exportingZip}
+            className="text-xs px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg border border-indigo-400/30 flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
+            title="Export Selected Motivation Letters as ZIP"
+          >
+            {exportingZip ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            <span>Export Letters (.zip)</span>
+          </button>
+          <button
             onClick={() => { onBulkDelete(Array.from(selectedIds)); setSelectedIds(new Set()); }}
             className="text-xs px-2 py-1.5 bg-red-600 border border-red-500/30 text-white rounded-lg hover:bg-red-500 flex items-center justify-center cursor-pointer transition-colors"
             title="Delete Selected"
@@ -615,6 +703,11 @@ export function ApplicationTable({
                           >
                             {app.jobTitle}
                           </button>
+                          {app.language && (
+                            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${app.language === 'en' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>
+                              {app.language}
+                            </span>
+                          )}
                           {overdue && (
                             <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full font-medium">
                               Overdue

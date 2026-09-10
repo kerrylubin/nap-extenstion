@@ -24,6 +24,10 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [hobbies, setHobbies] = useState("");
+  const [personalNotes, setPersonalNotes] = useState("");
+  const [referenceName, setReferenceName] = useState("");
+  const [referencePhone, setReferencePhone] = useState("");
+  const [referenceLinkedin, setReferenceLinkedin] = useState("");
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsSaved, setDetailsSaved] = useState(false);
 
@@ -64,6 +68,11 @@ export default function ProfilePage() {
       setHobbies(localH ?? "");
     }
 
+    setPersonalNotes(data.profile?.personalNotes ?? "");
+    setReferenceName(data.profile?.referenceName ?? "");
+    setReferencePhone(data.profile?.referencePhone ?? "");
+    setReferenceLinkedin(data.profile?.referenceLinkedin ?? "");
+
     setTemplate(data.profile?.masterEmailTemplate ?? getDefaultEmailTemplate(data.profile));
     setLetterTemplate(data.profile?.masterLetterTemplate ?? getDefaultLetterTemplate(data.profile));
     setLoading(false);
@@ -81,7 +90,7 @@ export default function ProfilePage() {
       const res = await fetch("/api/upload-cv", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, address, hobbies }),
+        body: JSON.stringify({ name, phone, address, hobbies, personalNotes, referenceName, referencePhone, referenceLinkedin }),
       });
       if (!res.ok) {
         const errorData = await res.json();
@@ -231,6 +240,35 @@ export default function ProfilePage() {
               <textarea value={hobbies} onChange={(e) => setHobbies(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-900 h-20 resize-none placeholder:text-gray-400"
                 placeholder="e.g. playing chess, hiking in nature, baking sourdough bread..." />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Extra details to make your letter personal (e.g. key motivations, background quirks)</label>
+              <textarea value={personalNotes} onChange={(e) => setPersonalNotes(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-900 h-24 resize-none placeholder:text-gray-400"
+                placeholder="e.g. I did my Business IT Management bachelors in Dutch even though my first language is English." />
+            </div>
+            <div className="border-t border-gray-100 pt-3 mt-3">
+              <span className="block text-xs font-bold text-brand-900 mb-2 uppercase tracking-wider">Reference (Optional)</span>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Reference Name</label>
+                  <input value={referenceName} onChange={(e) => setReferenceName(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-900 placeholder:text-gray-400"
+                    placeholder="John Doe" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Reference Phone</label>
+                  <input value={referencePhone} onChange={(e) => setReferencePhone(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-900 placeholder:text-gray-400"
+                    placeholder="+31 6 12345678" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Reference LinkedIn URL</label>
+                <input value={referenceLinkedin} onChange={(e) => setReferenceLinkedin(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-900 placeholder:text-gray-400"
+                  placeholder="https://linkedin.com/in/johndoe" />
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3 mt-4">
